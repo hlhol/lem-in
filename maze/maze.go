@@ -15,11 +15,14 @@ type Maze struct {
 }
 
 type Room struct {
-	connections []Room
 	distance    int
 	name        string
 	occupancies int
+	paths []string
 }
+
+	var collection [][]string
+	 
 
 // Load method to load the maze from input
 func Load(inputStream *bufio.Reader) *Maze {
@@ -148,7 +151,7 @@ func (maze *Maze) mapFarm(line string) bool {
 	log.Printf("Mapping connection between rooms: %s and %s\n", room1Name, room2Name)
 
 	// Find room objects by name
-	var room1, room2 *Room
+	var room1,room2 *Room
 	for i := range maze.rooms {
 		if maze.rooms[i].name == room1Name {
 			room1 = &maze.rooms[i]
@@ -165,11 +168,32 @@ func (maze *Maze) mapFarm(line string) bool {
 	}
 
 	// Establish connection between rooms
-	room1.connections = append(room1.connections, *room2)
-	room2.connections = append(room2.connections, *room1)
+	// room1. = append(room1.connections, *room2)
+	// room2.connections = append(room2.connections, *room1)
+	collection = append(collection, []string{room1Name, room2Name})
 	return true
 }
 
 func (maze *Maze) Solve() {
 	log.Println("Solving the maze...")
+	//l  want to declare all paths
+	var path string;
+	var currentcol = collection[0][0]
+	var flage bool
+
+	for !strings.HasPrefix(currentcol, maze.endRoom){
+
+		if strings.HasPrefix(currentcol, maze.startRoom) {
+			path = currentcol
+			flage = true
+			break
+		}
+
+		if flage {
+			
+		}
+	}
+	
+	log.Println(collection)
+	
 }
