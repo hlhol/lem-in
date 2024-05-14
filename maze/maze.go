@@ -192,18 +192,17 @@ func (maze *Maze) Solve() {
 }
 
 func (maze *Maze) explorePaths(currentRoom Room, endRoom string, currentPath []string, paths *[]string) {
-	currentPath = append(currentPath, currentRoom.name) //  is the end room
+	currentPath = append(currentPath, currentRoom.name)
 
 	if currentRoom.name == endRoom { //  is the end room
 		*paths = append(*paths, strings.Join(currentPath, " -> "))
 		return
 	}
 
-	// Explore all possible paths from current room
+	// explore all possible paths from current room
 	for _, nextRoomName := range currentRoom.paths {
 		for _, room := range maze.rooms {
 			if room.name == nextRoomName {
-				// Explore next room if it's not already visited
 				if !contains(currentPath, room.name) {
 					maze.explorePaths(room, endRoom, currentPath, paths)
 				}
