@@ -18,11 +18,10 @@ type Room struct {
 	distance    int
 	name        string
 	occupancies int
-	paths []string
+	paths       []string
 }
 
-	var collection [][]string
-	 
+var collection [][]string
 
 // Load method to load the maze from input
 func Load(inputStream *bufio.Reader) *Maze {
@@ -77,7 +76,6 @@ func Load(inputStream *bufio.Reader) *Maze {
 			if len(parts) > 0 {
 				maze.endRoom = parts[0]
 				log.Println("End room:", maze.endRoom)
-				// Ensure the end room is loaded as a regular room
 				if !maze.loadRooms(nextLine) {
 					return nil
 				}
@@ -105,7 +103,6 @@ func Load(inputStream *bufio.Reader) *Maze {
 
 	return maze
 }
-
 
 func (maze *Maze) loadRooms(line string) bool {
 	// Parse room data
@@ -151,7 +148,7 @@ func (maze *Maze) mapFarm(line string) bool {
 	log.Printf("Mapping connection between rooms: %s and %s\n", room1Name, room2Name)
 
 	// Find room objects by name
-	var room1,room2 *Room
+	var room1, room2 *Room
 	for i := range maze.rooms {
 		if maze.rooms[i].name == room1Name {
 			room1 = &maze.rooms[i]
@@ -168,32 +165,58 @@ func (maze *Maze) mapFarm(line string) bool {
 	}
 
 	// Establish connection between rooms
-	// room1. = append(room1.connections, *room2)
-	// room2.connections = append(room2.connections, *room1)
-	collection = append(collection, []string{room1Name, room2Name})
+	room1.paths = append(room1.paths, room2Name)
+	room2.paths = append(room2.paths, room1Name)
 	return true
 }
 
 func (maze *Maze) Solve() {
 	log.Println("Solving the maze...")
-	//l  want to declare all paths
-	var path string;
-	var currentcol = collection[0][0]
-	var flage bool
 
-	for !strings.HasPrefix(currentcol, maze.endRoom){
+	var paths []string
 
-		if strings.HasPrefix(currentcol, maze.startRoom) {
-			path = currentcol
-			flage = true
-			break
-		}
-
-		if flage {
-			
+	for _, room := range maze.rooms { // Iterate through rooms to find paths
+		if room.name == maze.startRoom {
+			maze.explorePaths(room, maze.endRoom, []string{}, &paths)
 		}
 	}
-	
-	log.Println(collection)
-	
+
+	if len(paths) == 0 {
+		log.Println("No paths found from start room to end room.")
+	} else {
+		log.Println("Paths found:")
+		for i, path := range paths {
+			log.Printf("Path %d: %s", i+1, path)
+		}
+	}
+}
+
+func (maze *Maze) explorePaths(currentRoom Room, endRoom string, currentPath []string, paths *[]string) {
+	currentPath = append(currentPath, currentRoom.name) //  is the end room
+
+	if currentRoom.name == endRoom { //  is the end room
+		*paths = append(*paths, strings.Join(currentPath, " -> "))
+		return
+	}
+
+	// Explore all possible paths from current room
+	for _, nextRoomName := range currentRoom.paths {
+		for _, room := range maze.rooms {
+			if room.name == nextRoomName {
+				// Explore next room if it's not already visited
+				if !contains(currentPath, room.name) {
+					maze.explorePaths(room, endRoom, currentPath, paths)
+				}
+			}
+		}
+	}
+}
+
+func contains(path []string, room string) bool {
+	for _, r := range path {
+		if r == room {
+			return true
+		}
+	}
+	return false
 }
