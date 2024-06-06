@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -32,6 +33,11 @@ func Load(inputStream *bufio.Reader) *Maze {
 	maze.antCount, err = strconv.Atoi(strings.TrimSpace(line))
 	if err != nil {
 		return nil
+	}
+
+	if maze.antCount <= 0 {
+		fmt.Printf("bad input the ant should be more than 0\n")
+		os.Exit(0)
 	}
 
 	// Load rooms and connections
@@ -170,65 +176,54 @@ func (maze *Maze) Solve() {
 
 	var paths []string
 
-	for _, room := range maze.rooms { // Iterate through rooms to find paths
-		if room.name == maze.startRoom {
-			maze.explorePaths(room, maze.endRoom, []string{}, &paths)
-		}
-	}
+	// Explore all paths from start to end room using BFS
+	maze.explorePaths(&paths)
 
 	if len(paths) == 0 {
 		log.Println("No paths found from start room to end room.")
 		return
 	}
 
-	paths = filteries(paths)
+	// Filter paths using the custom filtries function
+	paths = filtries(paths, maze, maze.antCount)
+	if len(paths) == 0 {
+		log.Println("No valid paths after filtering.")
+		return
+	}
+
 	log.Println("Paths found:")
 	for i, path := range paths {
 		log.Printf("Path %v: %s", i+1, path)
 	}
 
-	antsPerPath := make([]int, len(paths))
-
-	for ants := maze.antCount; ants > 0; ants-- {
-		minPathIndex := findShortestPathIndex(paths, antsPerPath)
-
-		antsPerPath[minPathIndex]++
-	}
+	// Distribute ants along the paths
+	antsPerPath := distributeAnts(paths, maze.antCount)
 
 	antPositions := make([][]string, maze.antCount)
 	antIndex := 0
 	for i, ants := range antsPerPath {
 		pathRooms := strings.Split(paths[i], " -> ")
 		for j := 0; j < ants; j++ {
-			antPositions[antIndex] = pathRooms
+			antPositions[antIndex] = append([]string{}, pathRooms...)
 			antIndex++
 		}
-	}
-
-	occupiedRooms := make(map[string]bool)
-
-	for i := 0; i < maze.antCount; i++ {
-		occupiedRooms[maze.startRoom] = true
 	}
 
 	steps := 0
 	for {
 		moved := false
 		stepOutput := []string{}
-		newOccupiedRooms := make(map[string]bool)
 
-		for i, pos := range antPositions {
+		for i := range antPositions {
+			pos := antPositions[i]
 			if len(pos) > 1 {
-				if !occupiedRooms[pos[1]] || pos[1] == maze.endRoom {
-					stepOutput = append(stepOutput, fmt.Sprintf("L%v-%s", i+1, pos[1]))
+				nextRoom := pos[1]
+
+				if nextRoom == maze.endRoom || !isRoomOccupied(antPositions, nextRoom, i) {
+					stepOutput = append(stepOutput, fmt.Sprintf("L%v-%s", i+1, nextRoom))
 					antPositions[i] = pos[1:]
-					newOccupiedRooms[pos[1]] = true
 					moved = true
-				} else {
-					newOccupiedRooms[pos[0]] = true
 				}
-			} else {
-				stepOutput = append(stepOutput, fmt.Sprintf("L%v-%s", i+1, pos[0]))
 			}
 		}
 
@@ -236,18 +231,35 @@ func (maze *Maze) Solve() {
 			break
 		}
 
-		occupiedRooms = newOccupiedRooms
 		steps++
 		fmt.Printf("Step %v: %s\n", steps, strings.Join(stepOutput, " "))
 	}
 }
 
-func findShortestPathIndex(paths []string, antsPerPath []int) int {
-	minIndex := 0
-	minSteps := calculateSteps(paths[0], antsPerPath[0])
+func distributeAnts(paths []string, antCount int) []int {
+	antsPerPath := make([]int, len(paths))
+	totalSteps := make([]int, len(paths))
 
-	for i := 1; i < len(paths); i++ {
-		steps := calculateSteps(paths[i], antsPerPath[i])
+	for i, path := range paths {
+		totalSteps[i] = calcsteps(path, 0) + 1 // Add 1 for the ant currently in the path
+	}
+
+	remainingAnts := antCount
+	for remainingAnts > 0 {
+		minStepsIndex := findMinSteps(totalSteps)
+		antsPerPath[minStepsIndex]++
+		totalSteps[minStepsIndex]++
+		remainingAnts--
+	}
+
+	return antsPerPath
+}
+
+func findMinSteps(totalSteps []int) int {
+	minSteps := totalSteps[0]
+	minIndex := 0
+
+	for i, steps := range totalSteps {
 		if steps < minSteps {
 			minSteps = steps
 			minIndex = i
@@ -257,33 +269,52 @@ func findShortestPathIndex(paths []string, antsPerPath []int) int {
 	return minIndex
 }
 
-func calculateSteps(path string, ants int) int {
-	rooms := roompath(path)
+func calcsteps(path string, ants int) int {
+	rooms := roomCount(path)
 	return rooms + ants
 }
 
-func roompath(path string) int {
+func roomCount(path string) int {
 	parts := strings.Split(path, " -> ")
 	return len(parts) + 1
 }
 
-func (maze *Maze) explorePaths(currentRoom Room, endRoom string, currentPath []string, paths *[]string) {
-	currentPath = append(currentPath, currentRoom.name)
-
-	if currentRoom.name == endRoom { //  is the end room
-		*paths = append(*paths, strings.Join(currentPath, " -> "))
-		return
+func (maze *Maze) explorePaths(paths *[]string) {
+	type PathNode struct {
+		currentRoom string
+		path        []string
 	}
 
-	for _, nextRoomName := range currentRoom.paths {
-		for _, room := range maze.rooms {
-			if room.name == nextRoomName {
-				if !contains(currentPath, room.name) {
-					maze.explorePaths(room, endRoom, currentPath, paths)
-				}
+	queue := []PathNode{{currentRoom: maze.startRoom, path: []string{maze.startRoom}}}
+	visited := make(map[string]bool)
+
+	for len(queue) > 0 {
+		node := queue[0]
+		queue = queue[1:]
+
+		if node.currentRoom == maze.endRoom {
+			*paths = append(*paths, strings.Join(node.path, " -> "))
+			continue
+		}
+
+		for _, nextRoomName := range maze.getPaths(node.currentRoom) {
+			if !contains(node.path, nextRoomName) {
+				newPath := append([]string{}, node.path...)
+				newPath = append(newPath, nextRoomName)
+				queue = append(queue, PathNode{currentRoom: nextRoomName, path: newPath})
+				visited[nextRoomName] = true
 			}
 		}
 	}
+}
+
+func (maze *Maze) getPaths(roomName string) []string {
+	for _, room := range maze.rooms {
+		if room.name == roomName {
+			return room.paths
+		}
+	}
+	return []string{}
 }
 
 func contains(path []string, room string) bool {
@@ -295,30 +326,109 @@ func contains(path []string, room string) bool {
 	return false
 }
 
+// func filtries(paths []string, maze *Maze, antCount int) []string {
+// 	if len(paths) == 0 {
+// 		log.Println("No paths to filter")
+// 		return paths
+// 	}
 
-func filteries(paths []string) []string{
-	filtered := make([]string, 0, len(paths))
+// 	var finalPaths []string
+// 	minSteps := -1
 
-	for _,p1 := range paths {
-		include := true
-		for _,p2 := range paths {
-			rooms := strings.Split(p2, " ")
-			
-			if len(p1) > len(p2) {
-				for _,room := range rooms {
-					if strings.Contains(p1 ,room) {
-						include = false
-						break
-					}
-				}
-			}
+// 	subsets := gensub(paths)
 
-		}
-		if include {
-			filtered = append(filtered, p1)
+// 	for _, subset := range subsets {
+// 		if len(subset) == 0 { // Skip the empty subset
+// 			continue
+// 		}
+
+// 		steps := calculateStepsForSubset(subset, maze, antCount)
+// 		if minSteps == -1 || steps < minSteps {
+// 			minSteps = steps
+// 			finalPaths = append([]string{}, subset...)
+// 		}
+// 	}
+
+// 	return finalPaths
+// }
+
+func filtries(paths []string, maze *Maze, antCount int) []string {
+	if len(paths) == 0 {
+		log.Println("No paths to filter")
+		return paths
+	}
+
+	var finalPaths []string
+	minSteps := -1
+
+	for subsetSize := 1; subsetSize <= len(paths); subsetSize++ {
+		currentSubset := paths[:subsetSize]
+
+		steps := calculateStepsForSubset(currentSubset, maze, antCount)
+		if minSteps == -1 || steps < minSteps {
+			minSteps = steps
+			finalPaths = append([]string{}, currentSubset...)
 		}
 	}
 
-	return filtered
+	return finalPaths
 }
 
+func gensub(paths []string) [][]string {
+	allSubs := [][]string{{}}
+	for _, p := range paths {
+		var newSubsets [][]string
+		for _, subset := range allSubs {
+			newSubset := append([]string{}, subset...)
+			newSubset = append(newSubset, p)
+			newSubsets = append(newSubsets, newSubset)
+		}
+		allSubs = append(allSubs, newSubsets...)
+	}
+	return allSubs
+}
+
+func calculateStepsForSubset(paths []string, maze *Maze, antCount int) int {
+	antsPerPath := distributeAnts(paths, antCount)
+	antPositions := make([][]string, maze.antCount)
+	antIndex := 0
+
+	for i, ants := range antsPerPath {
+		pathRooms := strings.Split(paths[i], " -> ")
+		for j := 0; j < ants; j++ {
+			antPositions[antIndex] = append([]string{}, pathRooms...)
+			antIndex++
+		}
+	}
+
+	steps := 0
+	for {
+		moved := false
+		for i := range antPositions {
+			pos := antPositions[i]
+			if len(pos) > 1 {
+				nextRoom := pos[1]
+
+				if nextRoom == maze.endRoom || !isRoomOccupied(antPositions, nextRoom, i) {
+					antPositions[i] = pos[1:]
+					moved = true
+				}
+			}
+		}
+		if !moved {
+			break
+		}
+		steps++
+	}
+
+	return steps
+}
+
+func isRoomOccupied(positions [][]string, room string, currentAnt int) bool {
+	for i, pos := range positions {
+		if i != currentAnt && len(pos) > 0 && pos[0] == room {
+			return true
+		}
+	}
+	return false
+}
