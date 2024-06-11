@@ -241,7 +241,7 @@ func distributeAnts(paths []string, antCount int) []int {
 	totalSteps := make([]int, len(paths))
 
 	for i, path := range paths {
-		totalSteps[i] = calcsteps(path, 0) + 1 // Add 1 for the ant currently in the path
+		totalSteps[i] = calcsteps(path, 0)  
 	}
 
 	remainingAnts := antCount
@@ -357,6 +357,14 @@ func filtries(paths []string, maze *Maze, antCount int) []string {
 		log.Println("No paths to filter")
 		return paths
 	}
+
+	/*for _,p := range paths{
+		for _,p1 := range paths {
+			
+		}
+	}*/
+
+
 
 	var finalPaths []string
 	minSteps := -1
