@@ -185,24 +185,24 @@ func (maze *Maze) Solve() {
 	}
 
 	// Filter paths using the custom filtries function
-	paths = filtries(paths, maze, maze.antCount)
-	if len(paths) == 0 {
+	paths2 := filtries(paths, maze, maze.antCount)
+	if len(paths2) == 0 {
 		log.Println("No valid paths after filtering.")
 		return
 	}
 
 	log.Println("Paths found:")
-	for i, path := range paths {
+	for i, path := range paths2 {
 		log.Printf("Path %v: %s", i+1, path)
 	}
 
 	// Distribute ants along the paths
-	antsPerPath := distributeAnts(paths, maze.antCount)
+	antsPerPath := distributeAnts(paths2, maze.antCount)
 
 	antPositions := make([][]string, maze.antCount)
 	antIndex := 0
 	for i, ants := range antsPerPath {
-		pathRooms := strings.Split(paths[i], " -> ")
+		pathRooms := strings.Split(paths2[i], " -> ")
 		for j := 0; j < ants; j++ {
 			antPositions[antIndex] = append([]string{}, pathRooms...)
 			antIndex++
@@ -234,21 +234,27 @@ func (maze *Maze) Solve() {
 		steps++
 		fmt.Printf("Step %v: %s\n", steps, strings.Join(stepOutput, " "))
 	}
+
+	for _, v := range paths {
+		fmt.Println(v)
+	}
 }
 
 func distributeAnts(paths []string, antCount int) []int {
 	antsPerPath := make([]int, len(paths))
+	rooms := make([]int, len(paths))
 	totalSteps := make([]int, len(paths))
 
 	for i, path := range paths {
-		totalSteps[i] = calcsteps(path, 0)  
+		rooms[i] = roomCount(path)
+		totalSteps[i] = rooms[i]
 	}
 
 	remainingAnts := antCount
 	for remainingAnts > 0 {
 		minStepsIndex := findMinSteps(totalSteps)
 		antsPerPath[minStepsIndex]++
-		totalSteps[minStepsIndex]++
+		totalSteps[minStepsIndex] = rooms[minStepsIndex] + antsPerPath[minStepsIndex]
 		remainingAnts--
 	}
 
@@ -269,14 +275,9 @@ func findMinSteps(totalSteps []int) int {
 	return minIndex
 }
 
-func calcsteps(path string, ants int) int {
-	rooms := roomCount(path)
-	return rooms + ants
-}
-
 func roomCount(path string) int {
 	parts := strings.Split(path, " -> ")
-	return len(parts) + 1
+	return len(parts)
 }
 
 func (maze *Maze) explorePaths(paths *[]string) {
@@ -360,11 +361,9 @@ func filtries(paths []string, maze *Maze, antCount int) []string {
 
 	/*for _,p := range paths{
 		for _,p1 := range paths {
-			
+
 		}
 	}*/
-
-
 
 	var finalPaths []string
 	minSteps := -1
