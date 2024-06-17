@@ -30,6 +30,6 @@ func main() {
 		return
 	}
 
-	m.Solve()
-
+	solution := m.Solve()
+	solution.Print()
 }
