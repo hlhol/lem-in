@@ -10,6 +10,8 @@ func (steps *Steps) Append(step string) {
 }
 
 func (solution *Solution) AddSteps(steps Steps) {
+	//line := strings.Join(steps, " ")
+	//fmt.Printf("Step %v: %s\n", 1, line)
 	solution.steps = append(solution.steps, steps)
 }
 
