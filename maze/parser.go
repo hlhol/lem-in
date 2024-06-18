@@ -56,7 +56,7 @@ func Load(inputStream *bufio.Reader) *Maze {
 			if newRoom == nil {
 				return nil
 			}
-			newRoom.antCount = antCount
+			newRoom.ants = generateAnts(antCount)
 			maze.rooms = append(maze.rooms, newRoom)
 
 			maze.start = newRoom
@@ -173,4 +173,17 @@ func loadRooms(line string) *Room {
 	}
 
 	return room
+}
+
+func generateAnts(count int) []*Ant {
+	ants := make([]*Ant, count)
+
+	for i := range ants {
+		name := strconv.Itoa(i + 1)
+
+		ant := &Ant{name: name}
+		ants[i] = ant
+	}
+
+	return ants
 }

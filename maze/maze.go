@@ -8,11 +8,15 @@ type Maze struct {
 }
 
 type Room struct {
-	antCount int
+	ants []*Ant
 
 	name  string
 	paths Paths
 	nodes []Node
+}
+
+type Ant struct {
+	name string
 }
 
 type Paths []*Room

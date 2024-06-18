@@ -37,7 +37,7 @@ func (maze *Maze) Solve() *Solution {
 		for r := len(maze.rooms) - 1; r > -1; r-- {
 			room := maze.rooms[r]
 
-			if room == maze.end || room.antCount == 0 || visitedRoom.dejavu(room) {
+			if room == maze.end || len(room.ants) == 0 || visitedRoom.dejavu(room) {
 				continue
 			}
 
@@ -46,7 +46,7 @@ func (maze *Maze) Solve() *Solution {
 			//fmt.Print("visiting rooms: ")
 			for _, node := range room.nodes {
 				//fmt.Println(node.room.name, node.distance)
-				if room.antCount == 0 || (node.room != maze.end && node.room.isOccupied()) {
+				if len(room.ants) == 0 || (node.room != maze.end && node.room.isOccupied()) {
 					continue
 				}
 
@@ -70,12 +70,11 @@ func (maze *Maze) Solve() *Solution {
 			}
 			r = len(maze.rooms) - 1
 
-			room.antCount--
-			node.room.antCount++
+			movedAnt := room.moveAnt(node.room)
 
 			visitedRoom = append(visitedRoom, node.room)
 
-			step := fmt.Sprintf("L%v-%s", i+1, node.room.name)
+			step := fmt.Sprintf("L%v-%s", movedAnt.name, node.room.name)
 			steps.Append(step)
 
 		}
@@ -150,7 +149,7 @@ func (room *Room) CreateNodes(start, end *Room, parent *Node) bool {
 }
 
 func (room *Room) isOccupied() bool {
-	return room.antCount > 0
+	return len(room.ants) > 0
 }
 
 func (node *Node) haveRoom(room *Room) bool {
@@ -171,6 +170,14 @@ func (node *Node) CalculateDistance() {
 		targetNode.distance++
 		node = node.parentNode
 	}
+}
+
+func (room *Room) moveAnt(newRoom *Room) *Ant {
+	ant := room.ants[0]
+	room.ants = room.ants[1:]
+
+	newRoom.ants = append(newRoom.ants, ant)
+	return ant
 }
 
 func (path *Paths) dejavu(room *Room) bool {
@@ -194,6 +201,6 @@ func (maze *Maze) printRooms() {
 			distance = v.nodes[0].distance
 		}
 
-		fmt.Println("room: ", v.name, ", count: ", v.antCount, "distance", distance)
+		fmt.Println("room: ", v.name, ", count: ", len(v.ants), "distance", distance)
 	}
 }
