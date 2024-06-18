@@ -17,6 +17,7 @@ func (solution *Solution) AddSteps(steps Steps) {
 
 func (solution *Solution) Print() {
 	if solution == nil {
+		fmt.Println("Can't Solve Maze")
 		return
 	}
 

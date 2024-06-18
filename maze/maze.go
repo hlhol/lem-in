@@ -12,7 +12,7 @@ type Room struct {
 
 	name  string
 	paths Paths
-	nodes []Node
+	nodes []*Node
 }
 
 type Ant struct {

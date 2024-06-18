@@ -60,7 +60,7 @@ func Load(inputStream *bufio.Reader) *Maze {
 			maze.rooms = append(maze.rooms, newRoom)
 
 			maze.start = newRoom
-			log.Println("Start room:", maze.start)
+			log.Println("Start room:", nextLine)
 			// Ensure the start room is loaded as a regular room
 
 			continue
@@ -86,7 +86,7 @@ func Load(inputStream *bufio.Reader) *Maze {
 			maze.rooms = append(maze.rooms, newRoom)
 
 			maze.end = newRoom
-			log.Println("End room:", maze.end)
+			log.Println("End room:", nextLine)
 			continue
 		}
 

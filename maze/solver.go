@@ -18,7 +18,7 @@ func (maze *Maze) Solve() *Solution {
 	}
 
 	// Explore all paths from start-to-end room using BFS
-	reachedEnd := maze.start.CreateNodes(maze.start, maze.end, nil)
+	reachedEnd := maze.start.CreateNodes(maze.start, maze.end, nil, 1)
 
 	if !reachedEnd {
 		log.Println("No paths found from start room to end room.")
@@ -29,11 +29,13 @@ func (maze *Maze) Solve() *Solution {
 
 	solution := &Solution{}
 
-	for i := 0; i < 10000; i++ {
+	const maxStep = 200000
+
+	for i := 0; i < maxStep; i++ {
 		steps := Steps{}
 		visitedRoom := Paths{}
 
-		//maze.printRooms()
+		maze.printRooms()
 		for r := len(maze.rooms) - 1; r > -1; r-- {
 			room := maze.rooms[r]
 
@@ -41,7 +43,7 @@ func (maze *Maze) Solve() *Solution {
 				continue
 			}
 
-			var possibleNodes []Node
+			var possibleNodes []*Node
 
 			//fmt.Print("visiting rooms: ")
 			for _, node := range room.nodes {
@@ -58,7 +60,11 @@ func (maze *Maze) Solve() *Solution {
 			}
 
 			sort.Slice(possibleNodes, func(i, j int) bool {
-				return possibleNodes[i].distance > possibleNodes[j].distance
+				if possibleNodes[j].room == maze.end {
+					return false
+				}
+
+				return possibleNodes[i].distance < possibleNodes[j].distance
 			})
 			node := possibleNodes[0]
 
@@ -86,13 +92,17 @@ func (maze *Maze) Solve() *Solution {
 		solution.AddSteps(steps)
 	}
 
-	return solution
+	if len(solution.steps) < maxStep {
+		return solution
+	}
+
+	return nil
 }
 
 func (maze *Maze) sort() {
 	for _, v := range maze.rooms {
 		if v.nodes == nil {
-			v.nodes = []Node{}
+			v.nodes = []*Node{}
 		}
 
 		sort.Slice(v.nodes, func(i, j int) bool {
@@ -117,7 +127,7 @@ func (maze *Maze) sort() {
 	})
 }
 
-func (room *Room) CreateNodes(start, end *Room, parent *Node) bool {
+func (room *Room) CreateNodes(start, end *Room, parent *Node, layer int) bool {
 
 	if room == end {
 		return true
@@ -129,14 +139,14 @@ func (room *Room) CreateNodes(start, end *Room, parent *Node) bool {
 			continue
 		}
 
-		node := Node{
+		node := &Node{
 			parentRoom: room,
 			parentNode: parent,
 			room:       path,
+			distance:   layer,
 		}
-		node.CalculateDistance()
 
-		haveEnd := path.CreateNodes(start, end, &node)
+		haveEnd := path.CreateNodes(start, end, node, layer+1)
 
 		if !haveEnd {
 			continue
@@ -158,8 +168,15 @@ func (node *Node) haveRoom(room *Room) bool {
 			return true
 		}
 
+		for _, v := range node.parentRoom.nodes {
+			if v.room == room {
+				return true
+			}
+		}
+
 		node = node.parentNode
 	}
+
 	return false
 }
 
