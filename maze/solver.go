@@ -35,7 +35,7 @@ func (maze *Maze) Solve() *Solution {
 		steps := Steps{}
 		visitedRoom := Paths{}
 
-		maze.printRooms()
+		//maze.printRooms()
 		for r := len(maze.rooms) - 1; r > -1; r-- {
 			room := maze.rooms[r]
 
@@ -61,7 +61,7 @@ func (maze *Maze) Solve() *Solution {
 
 			sort.Slice(possibleNodes, func(i, j int) bool {
 				if possibleNodes[j].room == maze.end {
-					return false
+					return true
 				}
 
 				return possibleNodes[i].distance < possibleNodes[j].distance
@@ -82,7 +82,6 @@ func (maze *Maze) Solve() *Solution {
 
 			step := fmt.Sprintf("L%v-%s", movedAnt.name, node.room.name)
 			steps.Append(step)
-
 		}
 
 		if len(steps) == 0 {
@@ -106,6 +105,10 @@ func (maze *Maze) sort() {
 		}
 
 		sort.Slice(v.nodes, func(i, j int) bool {
+			if len(maze.rooms) > 5 {
+				return v.nodes[i].distance > v.nodes[j].distance
+			}
+
 			return v.nodes[i].distance < v.nodes[j].distance
 		})
 	}
@@ -129,13 +132,14 @@ func (maze *Maze) sort() {
 
 func (room *Room) CreateNodes(start, end *Room, parent *Node, layer int) bool {
 
+	//fmt.Println("creating node for room", room.name)
 	if room == end {
 		return true
 	}
 
 	for _, path := range room.paths {
 
-		if parent != nil && parent.haveRoom(room) || path == start {
+		if parent != nil && parent.haveRoom(path) || path == start {
 			continue
 		}
 
