@@ -2,226 +2,344 @@ package maze
 
 import (
 	"fmt"
-	"log"
-	"sort"
 )
 
-func (maze *Maze) Solve() *Solution {
-	log.Println("Solving the maze...")
+var (
+	childrenOfFirstRoom int
+	countloop           int
+	appendWays          []*room
+	CombinatedRooms     [][]*room
+	BestCombinations    [][]Path
+	intersectbool       bool = false
+	BestPath            [][]*room
+	counter             int
+)
 
-	for _, v := range maze.rooms {
-		fmt.Print("room ", v.name, " have connection:")
-		for _, j := range v.paths {
-			fmt.Print("  ", j.name)
-		}
-		fmt.Println()
-	}
+// This function simulates the movement of ants in the ant farm
+// It takes a slice of ants as input
+func (maze *Maze) walk(antfarm []ant) {
+	var allpassed bool = true
+	var EndRoomStr EndRoomUsed
+	for i := 0; i < len(antfarm); i++ {
 
-	// Explore all paths from start-to-end room using BFS
-	reachedEnd := maze.start.CreateNodes(maze.start, maze.end, nil, 1)
-
-	if !reachedEnd {
-		log.Println("No paths found from start room to end room.")
-		return nil
-	}
-
-	maze.sort()
-
-	solution := &Solution{}
-
-	const maxStep = 200000
-
-	for i := 0; i < maxStep; i++ {
-		steps := Steps{}
-		visitedRoom := Paths{}
-
-		//maze.printRooms()
-		for r := len(maze.rooms) - 1; r > -1; r-- {
-			room := maze.rooms[r]
-
-			if room == maze.end || len(room.ants) == 0 || visitedRoom.dejavu(room) {
-				continue
-			}
-
-			var possibleNodes []*Node
-
-			//fmt.Print("visiting rooms: ")
-			for _, node := range room.nodes {
-				//fmt.Println(node.room.name, node.distance)
-				if len(room.ants) == 0 || (node.room != maze.end && node.room.isOccupied()) {
-					continue
-				}
-
-				possibleNodes = append(possibleNodes, node)
-			}
-
-			if len(possibleNodes) == 0 {
-				continue
-			}
-
-			sort.Slice(possibleNodes, func(i, j int) bool {
-				if possibleNodes[j].room == maze.end {
-					return true
-				}
-
-				return possibleNodes[i].distance < possibleNodes[j].distance
-			})
-			node := possibleNodes[0]
-
-			currentDistance := room.nodes[0].distance
-			nextDistance := node.distance
-
-			if currentDistance > nextDistance {
-				continue
-			}
-			r = len(maze.rooms) - 1
-
-			movedAnt := room.moveAnt(node.room)
-
-			visitedRoom = append(visitedRoom, node.room)
-
-			step := fmt.Sprintf("L%v-%s", movedAnt.name, node.room.name)
-			steps.Append(step)
-		}
-
-		if len(steps) == 0 {
-			break
-		}
-
-		solution.AddSteps(steps)
-	}
-
-	if len(solution.steps) < maxStep {
-		return solution
-	}
-
-	return nil
-}
-
-func (maze *Maze) sort() {
-	for _, v := range maze.rooms {
-		if v.nodes == nil {
-			v.nodes = []*Node{}
-		}
-
-		sort.Slice(v.nodes, func(i, j int) bool {
-			if len(maze.rooms) > 5 {
-				return v.nodes[i].distance > v.nodes[j].distance
-			}
-
-			return v.nodes[i].distance < v.nodes[j].distance
-		})
-	}
-
-	sort.Slice(maze.rooms, func(i, j int) bool {
-
-		roomI := maze.rooms[i]
-		roomJ := maze.rooms[j]
-
-		if len(roomI.nodes) == 0 {
-			return false
-		}
-
-		if len(roomJ.nodes) == 0 {
-			return true
-		}
-
-		return roomI.nodes[0].distance < roomJ.nodes[0].distance
-	})
-}
-
-func (room *Room) CreateNodes(start, end *Room, parent *Node, layer int) bool {
-
-	//fmt.Println("creating node for room", room.name)
-	if room == end {
-		return true
-	}
-
-	for _, path := range room.paths {
-
-		if parent != nil && parent.haveRoom(path) || path == start {
+		// If an ant has already reached the last room, skip to the next ant
+		if antfarm[i].curRoom.name == maze.endRoom.name {
 			continue
 		}
-
-		node := &Node{
-			parentRoom: room,
-			parentNode: parent,
-			room:       path,
-			distance:   layer,
+		// If an ant is not in the first room, mark the previous room as unoccupied
+		if antfarm[i].curRoom.name != maze.startRoom.name {
+			antfarm[i].curRoom.occupied = false
 		}
-
-		haveEnd := path.CreateNodes(start, end, node, layer+1)
-
-		if !haveEnd {
+		// If the next room an ant wants to move to is already occupied, skip to the next ant
+		if antfarm[i].pathOfAnt[antfarm[i].step].occupied {
 			continue
 		}
-
-		room.nodes = append(room.nodes, node)
-	}
-
-	return len(room.nodes) > 0
-}
-
-func (room *Room) isOccupied() bool {
-	return len(room.ants) > 0
-}
-
-func (node *Node) haveRoom(room *Room) bool {
-	for node != nil {
-		if node.parentRoom == room {
-			return true
+		// If an ant has already used a particular path to reach the last room, skip to the next ant
+		if EndRoomStr.used && EndRoomStr.whichPath[0].name == antfarm[i].pathOfAnt[0].name && antfarm[i].pathOfAnt[antfarm[i].step].name == maze.endRoom.name {
+			continue
 		}
+		// Move an ant to the next room in its path
+		antfarm[i].curRoom = antfarm[i].pathOfAnt[antfarm[i].step]
+		antfarm[i].step++
+		if antfarm[i].curRoom.name != maze.endRoom.name {
+			antfarm[i].curRoom.occupied = true
+		}
+		// If an ant has reached the last room, store the path used by the ant
+		if antfarm[i].curRoom.name == maze.endRoom.name {
+			EndRoomStr.used = true
+			EndRoomStr.whichPath = antfarm[i].pathOfAnt
+		}
+		// Update the allpassed variable to false if an ant has not yet reached the last room
+		allpassed = false
+		// Print the movement of an ant in the ant farm
+		fmt.Print("L", antfarm[i].id, "-", antfarm[i].curRoom.name, " ")
 
-		for _, v := range node.parentRoom.nodes {
-			if v.room == room {
-				return true
+	}
+	// If all ants have reached the last room, return
+	if allpassed {
+		return
+		// If some ants have not yet reached the last room, set the end room used by an ant to false
+		// and call the walk function recursively
+	} else {
+		EndRoomStr.used = false
+		EndRoomStr.whichPath = nil
+
+		fmt.Println(" ")
+		maze.walk(antfarm)
+	}
+}
+
+// FindAllPossiblePaths is a recursive function that searches for all possible paths from the starting room to the ending room.
+func (maze *Maze) FindAllPossiblePaths(path []*room, currentRoom room, paths *[][]*room, previousRoom *room) {
+	// if the current room is the last room, append the current path to the paths slice
+	if currentRoom.name == maze.endRoom.name {
+		// Check if the path goes back to the first room, and skip it if it does
+		var skipPath bool
+		for i := 0; i < len(path); i++ {
+			if path[i].name == maze.startRoom.name {
+				skipPath = true
+				break
 			}
 		}
 
-		node = node.parentNode
+		if len(*paths) == 0 {
+			*paths = append((*paths), nil)
+		} else if (*paths)[len(*paths)-1] != nil {
+			*paths = append((*paths), nil)
+		}
+
+		for i := 0; i < len(path); i++ {
+			if !skipPath {
+				(*paths)[len(*paths)-1] = append((*paths)[len(*paths)-1], path[i])
+			} else {
+				break
+			}
+		}
 	}
+	// Recursively explore all possible paths from the current room to other rooms
+	for i := 0; i < len(currentRoom.children); i++ {
+		var toContinue bool
 
-	return false
-}
+		for k := 0; k < len(path); k++ {
+			if path[k].name == currentRoom.children[i].name {
+				toContinue = true
+				break
+			}
+		}
 
-func (node *Node) CalculateDistance() {
-	targetNode := node
-
-	for node != nil {
-		targetNode.distance++
-		node = node.parentNode
+		if !toContinue {
+			pathToPass := path
+			pathToPass = append(pathToPass, currentRoom.children[i])
+			maze.FindAllPossiblePaths(pathToPass, *currentRoom.children[i], paths, &currentRoom)
+			pathToPass = path
+		}
+	}
+	// remove any empty paths from the paths slice
+	for i := 0; i < len(*paths); i++ {
+		if (*paths)[i] == nil {
+			*paths = append((*paths)[:i], (*paths)[i+1:]...)
+		}
 	}
 }
 
-func (room *Room) moveAnt(newRoom *Room) *Ant {
-	ant := room.ants[0]
-	room.ants = room.ants[1:]
-
-	newRoom.ants = append(newRoom.ants, ant)
-	return ant
-}
-
-func (path *Paths) dejavu(room *Room) bool {
-	for _, p := range *path {
-		if p == room {
-			return true
+func SortPaths(ways [][]*room) [][]*room {
+	for i := 0; i < len(ways)-1; i++ {
+		if len(ways[i]) > len(ways[i+1]) {
+			ways[i], ways[i+1] = ways[i+1], ways[i]
 		}
 	}
 
-	return false
+	for k := 0; k < len(ways)-1; k++ {
+		if len(ways[len(ways)-1]) < len(ways[k]) {
+			ways[len(ways)-1], ways[k] = ways[k], ways[len(ways)-1]
+		}
+	}
+	return ways
 }
 
-func (maze *Maze) printRooms() {
-	for _, v := range maze.rooms {
-
-		var distance int
-
-		if v.nodes == nil || len(v.nodes) == 0 {
-			distance = 0
-		} else {
-			distance = v.nodes[0].distance
-		}
-
-		fmt.Println("room: ", v.name, ", count: ", len(v.ants), "distance", distance)
+func (maze *Maze) ClearPath(ways [][]*room) [][]*room {
+	var somebool bool = false
+	var anotherbool bool = false
+	childrenOfFirstRoom = len(maze.startRoom.children)
+	if appendWays == nil {
+		appendWays = ways[0]
 	}
+	if CombinatedRooms == nil {
+		CombinatedRooms = append(CombinatedRooms, ways[0])
+	}
+	if countloop == len(ways)-1 {
+		return CombinatedRooms
+	}
+	for i := 0; i < len(ways[countloop+1]); i++ {
+		for k := 0; k < len(appendWays)-1; k++ {
+			if ways[countloop+1][i].name == appendWays[k].name {
+				somebool = true
+			}
+			if !somebool && i == len(ways[countloop+1])-1 && k == len(appendWays)-2 {
+				appendWays = append(appendWays, ways[countloop+1]...)
+				anotherbool = true
+			}
+		}
+	}
+	if anotherbool {
+		CombinatedRooms = append(CombinatedRooms, ways[countloop+1])
+	}
+	countloop++
+	maze.ClearPath(ways)
+	return CombinatedRooms
+}
+
+func (maze *Maze) FirstChildren(ways [][]*room) []Path {
+	var PathStruct Path
+	var PathStruct2 []Path
+	childrenOfFirstRoom = len(maze.startRoom.children)
+	for i := 0; i < len(ways); i++ {
+		for k := 0; k < childrenOfFirstRoom; k++ {
+			if ways[i][0] == maze.startRoom.children[k] {
+				PathStruct.id = k
+				PathStruct.paths = ways[i]
+				PathStruct.intersect = true
+				PathStruct2 = append(PathStruct2, PathStruct)
+
+			}
+		}
+	}
+	return PathStruct2
+}
+
+func SortedPaths(way []Path, idChildren int) []Path {
+	var SepPath []Path
+	for i := 0; i < len(way); i++ {
+		if way[i].id == idChildren {
+			SepPath = append(SepPath, way[i])
+		}
+	}
+	return SepPath
+}
+
+func SortAgain(way [][]Path) [][]Path {
+	for i := 0; i < len(way)-1; i++ {
+		if len(way[i]) < len(way[i+1]) {
+			way[i], way[i+1] = way[i+1], way[i]
+		}
+	}
+	return way
+}
+
+func AllCombinations(way [][]Path) [][]Path {
+	var AnotherPath []Path
+	var AnotherPath2 [][]Path
+	if childrenOfFirstRoom == 2 {
+		for i := 0; i < len(way[0]); i++ {
+			for k := 0; k < len(way[1]); k++ {
+				AnotherPath = append(AnotherPath, way[0][i], way[1][k])
+				AnotherPath2 = append(AnotherPath2, AnotherPath)
+				AnotherPath = nil
+
+			}
+		}
+	} else if childrenOfFirstRoom == 3 {
+		for i := 0; i < len(way[0]); i++ {
+			for k := 0; k < len(way[1]); k++ {
+				for l := 0; l < len(way[2]); l++ {
+					AnotherPath = append(AnotherPath, way[0][i], way[1][k], way[2][l])
+
+					AnotherPath2 = append(AnotherPath2, AnotherPath)
+					AnotherPath = nil
+				}
+			}
+		}
+	} else if childrenOfFirstRoom == 4 {
+		for i := 0; i < len(way[0]); i++ {
+			for k := 0; k < len(way[1]); k++ {
+				for t := 0; t < len(way[3]); t++ {
+					AnotherPath = append(AnotherPath, way[0][i], way[1][k], way[3][t])
+
+					AnotherPath2 = append(AnotherPath2, AnotherPath)
+					AnotherPath = nil
+				}
+			}
+		}
+	} else if childrenOfFirstRoom == 1 {
+		AnotherPath2 = append(AnotherPath2, way[0])
+	}
+
+	return AnotherPath2
+}
+
+func FindIntersect(way [][]Path) [][]Path {
+	for i := 0; i < len(way); i++ {
+		for k := 0; k < len(way[i])-1; k++ {
+			for l := 0; l < len(way[i][k].paths)-1; l++ {
+				for t := 0; t < len(way[i][k+1].paths)-1; t++ {
+					if way[i][k].paths[l].name == way[i][k+1].paths[t].name {
+						way[i][k].intersect = false
+						way[i][k+1].intersect = false
+
+					}
+				}
+			}
+		}
+	}
+	return way
+}
+
+func FindBestCombinations(way [][]Path) [][]Path {
+	for i := 0; i < len(way); i++ {
+		intersectbool = false
+		for k := 0; k < len(way[i]); k++ {
+			for t := 0; t < len(way[i][k].paths); t++ {
+			}
+			if !way[i][k].intersect {
+				intersectbool = true
+			} else if k == len(way[i])-1 && !intersectbool {
+				BestCombinations = append(BestCombinations, way[i])
+			}
+		}
+	}
+	if BestCombinations == nil {
+		BestCombinations = append(BestCombinations, way[0])
+	}
+	return BestCombinations
+}
+
+func PathtoRoom(way [][]Path) [][]*room {
+	if len(way) > 1 {
+		for i := 0; i < len(way)-1; i++ {
+			countofpaths := 0
+			for k := 0; k < len(way[i]); k++ {
+				countofpaths += len(way[i][k].paths)
+				way[i][k].totalLen = countofpaths
+			}
+		}
+		for i := 0; i < len(way)-1; i++ {
+			if way[i][len(way[i])-1].totalLen > way[i+1][len(way[i])-1].totalLen {
+				way[i], way[i+1] = way[i+1], way[i]
+			}
+		}
+	}
+	for i := 0; i < len(way[0]); i++ {
+		BestPath = append(BestPath, way[0][i].paths)
+	}
+
+	return BestPath
+}
+
+func SortBestPath(way [][]*room) [][]*room {
+	for i := 0; i < len(way)-1; i++ {
+		if len(way[i]) > len(way[i+1]) {
+			way[i], way[i+1] = way[i+1], way[i]
+		}
+	}
+	return way
+}
+
+func EqNum(ants []ant, Path [][]*room) []ant {
+	countofants := len(ants)
+	for i := 0; i < len(Path)-1; i++ {
+		if len(Path[i])+Path[i][0].queue > len(Path[i+1])+Path[i+1][0].queue {
+			Path[i], Path[i+1] = Path[i+1], Path[i]
+		}
+	}
+	ants[counter].pathOfAnt = Path[0]
+	Path[0][0].queue++
+	counter++
+	if counter != countofants {
+		EqNum(ants, Path)
+	}
+	return ants
+}
+
+func FindAnotherIntersect(way [][]*room) [][]*room {
+	for i := 0; i < len(way)-1; i++ {
+		for k := 0; k < len(way[i])-1; k++ {
+			for t := 0; t < len(way[i+1])-1; t++ {
+				if way[i][k].name == way[i+1][t].name {
+					way = append(way[:i+1], way[i+2:]...)
+					break
+				}
+			}
+		}
+	}
+	return way
 }

@@ -1,37 +1,21 @@
-go run . examples/example00.txt
+#!/bin/bash
 
-read -p "Press enter to continue"
+for i in `seq 0 7`; do
 
-go run . examples/example01.txt
+  file="examples/example0${i}.txt"
+  echo -e "\n\nrunning file $file"
 
-read -p "Press enter to continue"
+  go run . "$file"
+  read -p "Press enter to continue"
 
-go run . examples/example02.txt
+done
 
-read -p "Press enter to continue"
+for i in `seq 0 1`; do
 
-go run . examples/example03.txt
+  file="examples/badexample0${i}.txt"
+  echo "\n\nrunning file $file"
 
-read -p "Press enter to continue"
+  go run . "$file"
+  read -p "Press enter to continue"
 
-go run . examples/example04.txt
-
-read -p "Press enter to continue"
-
-go run . examples/example05.txt
-
-read -p "Press enter to continue"
-
-go run . examples/badexample00.txt
-
-read -p "Press enter to continue"
-
-go run . examples/badexample01.txt
-
-read -p "Press enter to continue"
-
-go run . examples/example06.txt
-
-read -p "Press enter to continue"
-
-go run . examples/example07.txt
+done

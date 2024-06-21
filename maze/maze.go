@@ -1,37 +1,56 @@
 package maze
 
 type Maze struct {
-	rooms []*Room
+	lines          []string // lines describing the maze (no comments or commands)
+	duplicateRooms []string // rooms already added to Farm (field bellow)
 
-	start *Room
-	end   *Room
+	startName string // start room name
+	endName   string
+
+	Farm      []room
+	startRoom *room
+	endRoom   *room
+
+	antCount int
+	ants     []ant
 }
 
-type Room struct {
-	ants []*Ant
-
-	name  string
-	paths Paths
-	nodes []*Node
+type ant struct {
+	id        int
+	curRoom   *room
+	pathOfAnt []*room
+	step      int
 }
 
-type Ant struct {
-	name string
+type Path struct {
+	id        int     // unique identifier for the path.
+	paths     []*room // the rooms in the path.
+	intersect bool    // whether the path intersects with another path.
+	queue     int     // the number of ants waiting to use the path.
+	totalLen  int     // the total length of the path.
 }
 
-type Paths []*Room
-
-type Node struct {
-	parentRoom *Room
-	parentNode *Node
-
-	room     *Room
-	distance int
-	siblings []*Node
+// EndRoomUsed represents whether the end room of a path has already been used.
+type EndRoomUsed struct {
+	whichPath []*room // the end room of the path.
+	used      bool    // whether the end room has been used.
 }
 
-type Solution struct {
-	steps []Steps
+type room struct {
+	parent   [](*room)
+	name     string
+	children [](*room)
+	occupied bool
+	queue    int
 }
 
-type Steps []string
+type solution struct {
+	childrenOfFirstRoom int
+	countloop           int
+	appendWays          []*room
+	CombinatedRooms     [][]*room
+	BestCombinations    [][]Path
+	intersectbool       bool
+	BestPath            [][]*room
+	counter             int
+}

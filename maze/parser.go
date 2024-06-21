@@ -1,189 +1,168 @@
 package maze
 
 import (
-	"bufio"
-	"fmt"
+	"io/ioutil"
+	"lem/utils"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 )
 
-// Load method to load the maze from input
-func Load(inputStream *bufio.Reader) *Maze {
-	maze := &Maze{}
+func (maze *Maze) Start() {
 
-	var antCount int
-
-	// Read ant count
-	line, err := inputStream.ReadString('\n')
-	if err != nil || len(line) == 0 {
-		return nil
+	if maze.antCount == 0 {
+		utils.Fatal("ERROR\nAnt Number 0 - Check The Ant Number")
 	}
 
-	antCount, err = strconv.Atoi(strings.TrimSpace(line))
+	// Create the ant farm based on the rooms and their connections
+	maze.Load()
+
+	// Swap rooms order
+	maze.SwapRooms()
+
+	// Add the last room to the ant farm
+	maze.Farm = append(maze.Farm, *maze.endRoom)
+
+	// Create the ants
+	maze.CreatingAnts()
+
+	// Find all possible paths between the rooms in the ant farm
+	var allPaths [][]*room
+	maze.FindAllPossiblePaths([]*room{}, maze.Farm[0], &allPaths, &maze.Farm[0])
+
+	// Sort the paths based on their length
+	for i := 0; i < len(allPaths); i++ {
+		allPaths = SortPaths(allPaths)
+	}
+
+	// Clean the paths and remove any duplicate paths
+	maze.ClearPath(allPaths)
+
+	// Finding the best paths for first children of the first room
+	var Paths123 []Path
+	var Paths1234 [][]Path
+	Paths123 = maze.FirstChildren(allPaths)
+
+	for i := 0; i < childrenOfFirstRoom; i++ {
+		Paths1234 = append(Paths1234, SortedPaths(Paths123, i))
+	}
+	Paths1234 = (SortAgain(Paths1234))
+	Paths1234 = AllCombinations(Paths1234)
+
+	// Finding intersecting paths
+	FindIntersect(Paths1234)
+
+	// Finding the best combinations of paths
+	Paths1234 = FindBestCombinations(Paths1234)
+
+	// Converting the best paths to rooms
+	BestPath = PathtoRoom(Paths1234)
+	BestPath = SortBestPath(BestPath)
+
+	// Finding intersecting paths in the best path
+	BestPath = FindAnotherIntersect(BestPath)
+	BestPath = FindAnotherIntersect(BestPath)
+
+	// Making sure that the number of ants in the maze is equal to the number of rooms in the best path
+	maze.ants = EqNum(maze.ants, BestPath)
+
+	// Making ants walk through the farm
+	maze.walk(maze.ants)
+}
+
+func ReadFile(textfile string) *Maze {
+	content, err := ioutil.ReadFile(textfile)
 	if err != nil {
-		return nil
+		log.Fatal(err)
 	}
 
-	if antCount <= 0 {
-		fmt.Printf("bad input the ant should be more than 0\n")
-		os.Exit(0)
+	lines := strings.Split(string(content), "\n")
+
+	if len(lines) == 0 {
+		utils.Fatal("Empty input file")
 	}
 
-	// Load rooms and connections
-	for {
-		line, err := inputStream.ReadString('\n')
-		if err != nil || len(line) == 0 {
-			break
-		}
-		line = strings.TrimSpace(line)
+	antCount, _ := strconv.Atoi(lines[0])
+	lines = lines[1:]
 
-		if strings.HasPrefix(line, "##start") {
-			// Read the next line to get start room name
-			nextLine, err := inputStream.ReadString('\n')
-			if err != nil {
-				log.Println("Error reading next line after ##start:", err)
-				return nil
-			}
-			parts := strings.Fields(nextLine)
-			if len(parts) <= 0 {
-				log.Println("Unexpected format for next line after ##start")
-				return nil
-			}
+	rooms := make([]string, len(lines))
+	validLines := 0
 
-			newRoom := loadRooms(nextLine)
-			if newRoom == nil {
-				return nil
-			}
-			newRoom.ants = generateAnts(antCount)
-			maze.rooms = append(maze.rooms, newRoom)
+	startLine := -1
+	endLine := -1
 
-			maze.start = newRoom
-			log.Println("Start room:", nextLine)
-			// Ensure the start room is loaded as a regular room
-
-			continue
-
-		} else if strings.HasPrefix(line, "##end") {
-			// Read the next line to get end room name
-			nextLine, err := inputStream.ReadString('\n')
-			if err != nil {
-				log.Println("Error reading next line after ##end:", err)
-				return nil
-			}
-
-			parts := strings.Fields(nextLine)
-			if len(parts) <= 0 {
-				log.Println("Unexpected format for next line after ##end")
-				return nil
-			}
-
-			newRoom := loadRooms(nextLine)
-			if newRoom == nil {
-				return nil
-			}
-			maze.rooms = append(maze.rooms, newRoom)
-
-			maze.end = newRoom
-			log.Println("End room:", nextLine)
+	for i, v := range lines {
+		if len(v) == 0 {
 			continue
 		}
 
-		if strings.Contains(line, "-") {
-			// Connection line
-			log.Println("Mapping connection:", line)
-			if !maze.mapFarm(line) {
-				return nil
-			}
-		} else {
-			// Room line
-			log.Println("Loading room:", line)
+		if v[0] == '#' {
+			command := testCommand(v)
 
-			newRoom := loadRooms(line)
-			if newRoom == nil {
-				return nil
+			switch command {
+			case 0:
+				continue
+
+			case 1:
+				if startLine != -1 {
+					utils.Fatal("multiple ##startName found")
+				}
+				startLine = validLines
+				continue
+
+			case 2:
+				if endLine != -1 {
+					utils.Fatal("multiple ##end found")
+				}
+				endLine = validLines
+				continue
+
+			default:
+				utils.Fatal("base line at %d", i+2) // index startName from 0 + first line is skipped
 			}
-			maze.rooms = append(maze.rooms, newRoom)
 		}
+
+		rooms[validLines] = v
+		validLines++
+	}
+
+	rooms = rooms[:validLines]
+
+	startName := strings.Split(rooms[startLine], " ")[0]
+	endName := strings.Split(rooms[endLine], " ")[0]
+
+	maze := &Maze{
+		startName: startName,
+		endName:   endName,
+		lines:     rooms,
+		antCount:  antCount,
 	}
 
 	return maze
 }
 
-func (maze *Maze) mapFarm(line string) bool {
-	// Parse connection data
-	parts := strings.Split(line, "-")
-	if len(parts) != 2 {
-		log.Println("Unexpected format for connection line:", line)
-		return false
+// check if the given line is a comment or and label
+// return 0 for comment, 1 for startName, 2 for end
+// if bad syntax is used return -1
+func testCommand(line string) int {
+	if len(line) < 2 {
+		return 0
 	}
-	room1Name := parts[0]
-	room2Name := parts[1]
 
-	log.Printf("Mapping connection between rooms: %s and %s\n", room1Name, room2Name)
+	if line[:2] == "##" {
+		label := line[2:]
 
-	// Find room objects by name
-	var room1, room2 *Room
-	for i := range maze.rooms {
-		if maze.rooms[i].name == room1Name {
-			room1 = maze.rooms[i]
+		switch label {
+		case "start":
+			return 1
+
+		case "end":
+			return 2
+
+		default:
+			return -1
 		}
-		if maze.rooms[i].name == room2Name {
-			room2 = maze.rooms[i]
-		}
 	}
 
-	// Handle if rooms are not found
-	if room1 == nil || room2 == nil {
-		log.Println("Room not found for connection:", line)
-		return false
-	}
-
-	// Establish connection between rooms
-	room1.paths = append(room1.paths, room2)
-	room2.paths = append(room2.paths, room1)
-	return true
-}
-
-func loadRooms(line string) *Room {
-	// Parse room data
-	parts := strings.Fields(line)
-	if len(parts) != 3 {
-		log.Println("Unexpected format for room line:", line)
-		return nil
-	}
-
-	roomName := parts[0]
-	_, err := strconv.Atoi(parts[1]) // x-coordinate
-	if err != nil {
-		log.Println("Error parsing x-coordinate:", err)
-		return nil
-	}
-
-	_, err = strconv.Atoi(parts[2]) // y-coordinate
-	if err != nil {
-		log.Println("Error parsing y-coordinate:", err)
-		return nil
-	}
-
-	// Create room
-	room := &Room{
-		name: roomName,
-	}
-
-	return room
-}
-
-func generateAnts(count int) []*Ant {
-	ants := make([]*Ant, count)
-
-	for i := range ants {
-		name := strconv.Itoa(i + 1)
-
-		ant := &Ant{name: name}
-		ants[i] = ant
-	}
-
-	return ants
+	return 0
 }
