@@ -28,46 +28,48 @@ func (maze *Maze) Start() {
 
 	// Find all possible paths between the rooms in the ant farm
 	var allPaths [][]*room
-	maze.FindAllPossiblePaths([]*room{}, maze.Farm[0], &allPaths, &maze.Farm[0])
+	maze.FindAllPossiblePaths([]*room{}, maze.Farm[0], &allPaths)
 
 	// Sort the paths based on their length
 	for i := 0; i < len(allPaths); i++ {
 		allPaths = SortPaths(allPaths)
 	}
 
+	s := solution{}
+
 	// Clean the paths and remove any duplicate paths
-	maze.ClearPath(allPaths)
+	s.ClearPath(maze, allPaths)
 
 	// Finding the best paths for first children of the first room
 	var Paths123 []Path
 	var Paths1234 [][]Path
-	Paths123 = maze.FirstChildren(allPaths)
+	Paths123 = s.FirstChildren(maze, allPaths)
 
-	for i := 0; i < childrenOfFirstRoom; i++ {
+	for i := 0; i < s.childrenOfFirstRoom; i++ {
 		Paths1234 = append(Paths1234, SortedPaths(Paths123, i))
 	}
 	Paths1234 = (SortAgain(Paths1234))
-	Paths1234 = AllCombinations(Paths1234)
+	Paths1234 = s.AllCombinations(Paths1234)
 
 	// Finding intersecting paths
 	FindIntersect(Paths1234)
 
 	// Finding the best combinations of paths
-	Paths1234 = FindBestCombinations(Paths1234)
+	s.FindBestCombinations(Paths1234)
 
 	// Converting the best paths to rooms
-	BestPath = PathtoRoom(Paths1234)
-	BestPath = SortBestPath(BestPath)
+	s.PathtoRoom(s.BestCombinations)
+	s.BestPath = SortBestPath(s.BestPath)
 
 	// Finding intersecting paths in the best path
-	BestPath = FindAnotherIntersect(BestPath)
-	BestPath = FindAnotherIntersect(BestPath)
+	s.BestPath = FindAnotherIntersect(s.BestPath)
+	s.BestPath = FindAnotherIntersect(s.BestPath)
 
 	// Making sure that the number of ants in the maze is equal to the number of rooms in the best path
-	maze.ants = EqNum(maze.ants, BestPath)
+	maze.ants = s.EqNum(maze.ants, s.BestPath)
 
 	// Making ants walk through the farm
-	maze.walk(maze.ants)
+	maze.walk()
 }
 
 func ReadFile(textfile string) *Maze {

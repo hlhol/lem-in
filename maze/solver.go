@@ -4,55 +4,43 @@ import (
 	"fmt"
 )
 
-var (
-	childrenOfFirstRoom int
-	countloop           int
-	appendWays          []*room
-	CombinatedRooms     [][]*room
-	BestCombinations    [][]Path
-	intersectbool       bool = false
-	BestPath            [][]*room
-	counter             int
-)
-
-// This function simulates the movement of ants in the ant farm
 // It takes a slice of ants as input
-func (maze *Maze) walk(antfarm []ant) {
-	var allpassed bool = true
+func (maze *Maze) walk() {
+	var allpassed = true
 	var EndRoomStr EndRoomUsed
-	for i := 0; i < len(antfarm); i++ {
+	for i := 0; i < len(maze.ants); i++ {
 
 		// If an ant has already reached the last room, skip to the next ant
-		if antfarm[i].curRoom.name == maze.endRoom.name {
+		if maze.ants[i].curRoom.name == maze.endRoom.name {
 			continue
 		}
 		// If an ant is not in the first room, mark the previous room as unoccupied
-		if antfarm[i].curRoom.name != maze.startRoom.name {
-			antfarm[i].curRoom.occupied = false
+		if maze.ants[i].curRoom.name != maze.startRoom.name {
+			maze.ants[i].curRoom.occupied = false
 		}
 		// If the next room an ant wants to move to is already occupied, skip to the next ant
-		if antfarm[i].pathOfAnt[antfarm[i].step].occupied {
+		if maze.ants[i].pathOfAnt[maze.ants[i].step].occupied {
 			continue
 		}
 		// If an ant has already used a particular path to reach the last room, skip to the next ant
-		if EndRoomStr.used && EndRoomStr.whichPath[0].name == antfarm[i].pathOfAnt[0].name && antfarm[i].pathOfAnt[antfarm[i].step].name == maze.endRoom.name {
+		if EndRoomStr.used && EndRoomStr.whichPath[0].name == maze.ants[i].pathOfAnt[0].name && maze.ants[i].pathOfAnt[maze.ants[i].step].name == maze.endRoom.name {
 			continue
 		}
 		// Move an ant to the next room in its path
-		antfarm[i].curRoom = antfarm[i].pathOfAnt[antfarm[i].step]
-		antfarm[i].step++
-		if antfarm[i].curRoom.name != maze.endRoom.name {
-			antfarm[i].curRoom.occupied = true
+		maze.ants[i].curRoom = maze.ants[i].pathOfAnt[maze.ants[i].step]
+		maze.ants[i].step++
+		if maze.ants[i].curRoom.name != maze.endRoom.name {
+			maze.ants[i].curRoom.occupied = true
 		}
 		// If an ant has reached the last room, store the path used by the ant
-		if antfarm[i].curRoom.name == maze.endRoom.name {
+		if maze.ants[i].curRoom.name == maze.endRoom.name {
 			EndRoomStr.used = true
-			EndRoomStr.whichPath = antfarm[i].pathOfAnt
+			EndRoomStr.whichPath = maze.ants[i].pathOfAnt
 		}
 		// Update the allpassed variable to false if an ant has not yet reached the last room
 		allpassed = false
 		// Print the movement of an ant in the ant farm
-		fmt.Print("L", antfarm[i].id, "-", antfarm[i].curRoom.name, " ")
+		fmt.Print("L", maze.ants[i].id, "-", maze.ants[i].curRoom.name, " ")
 
 	}
 	// If all ants have reached the last room, return
@@ -65,12 +53,12 @@ func (maze *Maze) walk(antfarm []ant) {
 		EndRoomStr.whichPath = nil
 
 		fmt.Println(" ")
-		maze.walk(antfarm)
+		maze.walk()
 	}
 }
 
 // FindAllPossiblePaths is a recursive function that searches for all possible paths from the starting room to the ending room.
-func (maze *Maze) FindAllPossiblePaths(path []*room, currentRoom room, paths *[][]*room, previousRoom *room) {
+func (maze *Maze) FindAllPossiblePaths(path []*room, currentRoom room, paths *[][]*room) {
 	// if the current room is the last room, append the current path to the paths slice
 	if currentRoom.name == maze.endRoom.name {
 		// Check if the path goes back to the first room, and skip it if it does
@@ -83,9 +71,9 @@ func (maze *Maze) FindAllPossiblePaths(path []*room, currentRoom room, paths *[]
 		}
 
 		if len(*paths) == 0 {
-			*paths = append((*paths), nil)
+			*paths = append(*paths, nil)
 		} else if (*paths)[len(*paths)-1] != nil {
-			*paths = append((*paths), nil)
+			*paths = append(*paths, nil)
 		}
 
 		for i := 0; i < len(path); i++ {
@@ -96,6 +84,7 @@ func (maze *Maze) FindAllPossiblePaths(path []*room, currentRoom room, paths *[]
 			}
 		}
 	}
+
 	// Recursively explore all possible paths from the current room to other rooms
 	for i := 0; i < len(currentRoom.children); i++ {
 		var toContinue bool
@@ -110,10 +99,11 @@ func (maze *Maze) FindAllPossiblePaths(path []*room, currentRoom room, paths *[]
 		if !toContinue {
 			pathToPass := path
 			pathToPass = append(pathToPass, currentRoom.children[i])
-			maze.FindAllPossiblePaths(pathToPass, *currentRoom.children[i], paths, &currentRoom)
+			maze.FindAllPossiblePaths(pathToPass, *currentRoom.children[i], paths)
 			pathToPass = path
 		}
 	}
+
 	// remove any empty paths from the paths slice
 	for i := 0; i < len(*paths); i++ {
 		if (*paths)[i] == nil {
@@ -137,44 +127,44 @@ func SortPaths(ways [][]*room) [][]*room {
 	return ways
 }
 
-func (maze *Maze) ClearPath(ways [][]*room) [][]*room {
-	var somebool bool = false
-	var anotherbool bool = false
-	childrenOfFirstRoom = len(maze.startRoom.children)
-	if appendWays == nil {
-		appendWays = ways[0]
+func (solution *solution) ClearPath(maze *Maze, ways [][]*room) [][]*room {
+	var somebool = false
+	var anotherbool = false
+	solution.childrenOfFirstRoom = len(maze.startRoom.children)
+	if solution.appendWays == nil {
+		solution.appendWays = ways[0]
 	}
-	if CombinatedRooms == nil {
-		CombinatedRooms = append(CombinatedRooms, ways[0])
+	if solution.CombinatedRooms == nil {
+		solution.CombinatedRooms = append(solution.CombinatedRooms, ways[0])
 	}
-	if countloop == len(ways)-1 {
-		return CombinatedRooms
+	if solution.countloop == len(ways)-1 {
+		return solution.CombinatedRooms
 	}
-	for i := 0; i < len(ways[countloop+1]); i++ {
-		for k := 0; k < len(appendWays)-1; k++ {
-			if ways[countloop+1][i].name == appendWays[k].name {
+	for i := 0; i < len(ways[solution.countloop+1]); i++ {
+		for k := 0; k < len(solution.appendWays)-1; k++ {
+			if ways[solution.countloop+1][i].name == solution.appendWays[k].name {
 				somebool = true
 			}
-			if !somebool && i == len(ways[countloop+1])-1 && k == len(appendWays)-2 {
-				appendWays = append(appendWays, ways[countloop+1]...)
+			if !somebool && i == len(ways[solution.countloop+1])-1 && k == len(solution.appendWays)-2 {
+				solution.appendWays = append(solution.appendWays, ways[solution.countloop+1]...)
 				anotherbool = true
 			}
 		}
 	}
 	if anotherbool {
-		CombinatedRooms = append(CombinatedRooms, ways[countloop+1])
+		solution.CombinatedRooms = append(solution.CombinatedRooms, ways[solution.countloop+1])
 	}
-	countloop++
-	maze.ClearPath(ways)
-	return CombinatedRooms
+	solution.countloop++
+	solution.ClearPath(maze, ways)
+	return solution.CombinatedRooms
 }
 
-func (maze *Maze) FirstChildren(ways [][]*room) []Path {
+func (solution *solution) FirstChildren(maze *Maze, ways [][]*room) []Path {
 	var PathStruct Path
 	var PathStruct2 []Path
-	childrenOfFirstRoom = len(maze.startRoom.children)
+	solution.childrenOfFirstRoom = len(maze.startRoom.children)
 	for i := 0; i < len(ways); i++ {
-		for k := 0; k < childrenOfFirstRoom; k++ {
+		for k := 0; k < solution.childrenOfFirstRoom; k++ {
 			if ways[i][0] == maze.startRoom.children[k] {
 				PathStruct.id = k
 				PathStruct.paths = ways[i]
@@ -206,10 +196,10 @@ func SortAgain(way [][]Path) [][]Path {
 	return way
 }
 
-func AllCombinations(way [][]Path) [][]Path {
+func (solution *solution) AllCombinations(way [][]Path) [][]Path {
 	var AnotherPath []Path
 	var AnotherPath2 [][]Path
-	if childrenOfFirstRoom == 2 {
+	if solution.childrenOfFirstRoom == 2 {
 		for i := 0; i < len(way[0]); i++ {
 			for k := 0; k < len(way[1]); k++ {
 				AnotherPath = append(AnotherPath, way[0][i], way[1][k])
@@ -218,7 +208,7 @@ func AllCombinations(way [][]Path) [][]Path {
 
 			}
 		}
-	} else if childrenOfFirstRoom == 3 {
+	} else if solution.childrenOfFirstRoom == 3 {
 		for i := 0; i < len(way[0]); i++ {
 			for k := 0; k < len(way[1]); k++ {
 				for l := 0; l < len(way[2]); l++ {
@@ -229,7 +219,7 @@ func AllCombinations(way [][]Path) [][]Path {
 				}
 			}
 		}
-	} else if childrenOfFirstRoom == 4 {
+	} else if solution.childrenOfFirstRoom == 4 {
 		for i := 0; i < len(way[0]); i++ {
 			for k := 0; k < len(way[1]); k++ {
 				for t := 0; t < len(way[3]); t++ {
@@ -240,7 +230,7 @@ func AllCombinations(way [][]Path) [][]Path {
 				}
 			}
 		}
-	} else if childrenOfFirstRoom == 1 {
+	} else if solution.childrenOfFirstRoom == 1 {
 		AnotherPath2 = append(AnotherPath2, way[0])
 	}
 
@@ -264,26 +254,27 @@ func FindIntersect(way [][]Path) [][]Path {
 	return way
 }
 
-func FindBestCombinations(way [][]Path) [][]Path {
+func (solution *solution) FindBestCombinations(way [][]Path) {
 	for i := 0; i < len(way); i++ {
-		intersectbool = false
+		intersectbool := false
 		for k := 0; k < len(way[i]); k++ {
 			for t := 0; t < len(way[i][k].paths); t++ {
 			}
 			if !way[i][k].intersect {
 				intersectbool = true
 			} else if k == len(way[i])-1 && !intersectbool {
-				BestCombinations = append(BestCombinations, way[i])
+				solution.BestCombinations = append(solution.BestCombinations, way[i])
 			}
 		}
 	}
-	if BestCombinations == nil {
-		BestCombinations = append(BestCombinations, way[0])
+	if solution.BestCombinations == nil {
+		solution.BestCombinations = append(solution.BestCombinations, way[0])
 	}
-	return BestCombinations
+
+	return
 }
 
-func PathtoRoom(way [][]Path) [][]*room {
+func (solution *solution) PathtoRoom(way [][]Path) {
 	if len(way) > 1 {
 		for i := 0; i < len(way)-1; i++ {
 			countofpaths := 0
@@ -299,10 +290,10 @@ func PathtoRoom(way [][]Path) [][]*room {
 		}
 	}
 	for i := 0; i < len(way[0]); i++ {
-		BestPath = append(BestPath, way[0][i].paths)
+		solution.BestPath = append(solution.BestPath, way[0][i].paths)
 	}
 
-	return BestPath
+	return
 }
 
 func SortBestPath(way [][]*room) [][]*room {
@@ -314,18 +305,18 @@ func SortBestPath(way [][]*room) [][]*room {
 	return way
 }
 
-func EqNum(ants []ant, Path [][]*room) []ant {
+func (solution *solution) EqNum(ants []ant, Path [][]*room) []ant {
 	countofants := len(ants)
 	for i := 0; i < len(Path)-1; i++ {
 		if len(Path[i])+Path[i][0].queue > len(Path[i+1])+Path[i+1][0].queue {
 			Path[i], Path[i+1] = Path[i+1], Path[i]
 		}
 	}
-	ants[counter].pathOfAnt = Path[0]
+	ants[solution.counter].pathOfAnt = Path[0]
 	Path[0][0].queue++
-	counter++
-	if counter != countofants {
-		EqNum(ants, Path)
+	solution.counter++
+	if solution.counter != countofants {
+		solution.EqNum(ants, Path)
 	}
 	return ants
 }

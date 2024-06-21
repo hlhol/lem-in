@@ -50,7 +50,6 @@ type solution struct {
 	appendWays          []*room
 	CombinatedRooms     [][]*room
 	BestCombinations    [][]Path
-	intersectbool       bool
 	BestPath            [][]*room
 	counter             int
 }

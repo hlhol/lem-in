@@ -3,19 +3,21 @@
 for i in `seq 0 7`; do
 
   file="examples/example0${i}.txt"
-  echo -e "\n\nrunning file $file"
+
+  echo -e "\nAbout to run file $file\n"
+  read -p "Press enter to continue"
 
   go run . "$file"
-  read -p "Press enter to continue"
 
 done
 
 for i in `seq 0 1`; do
 
   file="examples/badexample0${i}.txt"
-  echo "\n\nrunning file $file"
+
+  echo -e "\nAbout to run file $file\n"
+  read -p "Press enter to continue"
 
   go run . "$file"
-  read -p "Press enter to continue"
 
 done
