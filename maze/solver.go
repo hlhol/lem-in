@@ -167,20 +167,23 @@ func (solution *solution) ClearPath(maze *Maze, ways [][]*room) [][]*room {
 
 func (solution *solution) firstRoomPaths(maze *Maze, ways [][]*room) []Path {
 
-	var PathStruct Path
-	var PathStruct2 []Path
+	var paths []Path
 
 	for i := 0; i < len(ways); i++ {
 		for k := 0; k < solution.startRoomChildren; k++ {
 			if ways[i][0] == maze.startRoom.children[k] {
-				PathStruct.id = k
-				PathStruct.paths = ways[i]
-				PathStruct.intersect = true
-				PathStruct2 = append(PathStruct2, PathStruct)
+
+				path := Path{
+					id:        k,
+					paths:     ways[i],
+					intersect: true,
+				}
+
+				paths = append(paths, path)
 			}
 		}
 	}
-	return PathStruct2
+	return paths
 }
 
 func SortedPaths(way []Path, idChildren int) []Path {

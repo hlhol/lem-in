@@ -1,8 +1,8 @@
 package maze
 
 type Maze struct {
-	lines          []string // lines describing the maze (no comments or commands)
-	duplicateRooms []string // rooms already added to Farm (field bellow)
+	lines      []string // lines describing the maze (no comments or commands)
+	addedRooms []string // rooms already added to the Farm (field bellow). used to check for duplicates
 
 	startName string // start room name
 	endName   string
