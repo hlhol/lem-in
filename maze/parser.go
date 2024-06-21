@@ -35,33 +35,37 @@ func (maze *Maze) Start() {
 		allPaths = SortPaths(allPaths)
 	}
 
-	s := solution{}
+	s := solution{
+		startRoomChildren: len(maze.startRoom.children),
+	}
 
 	// Clean the paths and remove any duplicate paths
 	s.ClearPath(maze, allPaths)
 
 	// Finding the best paths for first children of the first room
-	var Paths123 []Path
-	var Paths1234 [][]Path
-	Paths123 = s.FirstChildren(maze, allPaths)
+	var paths []Path
+	var pathsCombinations [][]Path
+	paths = s.firstRoomPaths(maze, allPaths)
 
-	for i := 0; i < s.childrenOfFirstRoom; i++ {
-		Paths1234 = append(Paths1234, SortedPaths(Paths123, i))
+	for i := 0; i < s.startRoomChildren; i++ {
+		pathsCombinations = append(pathsCombinations, SortedPaths(paths, i))
 	}
-	Paths1234 = (SortAgain(Paths1234))
-	Paths1234 = s.AllCombinations(Paths1234)
+
+	pathsCombinations = SortAgain(pathsCombinations)
+	pathsCombinations = s.AllCombinations(pathsCombinations)
 
 	// Finding intersecting paths
-	FindIntersect(Paths1234)
+	FindIntersect(pathsCombinations)
 
 	// Finding the best combinations of paths
-	s.FindBestCombinations(Paths1234)
+	s.FindBestCombinations(pathsCombinations)
 
 	// Converting the best paths to rooms
 	s.PathtoRoom(s.BestCombinations)
 	s.BestPath = SortBestPath(s.BestPath)
 
 	// Finding intersecting paths in the best path
+	// intersect help reduce the time ant will wait and can provide a shorter path
 	s.BestPath = FindAnotherIntersect(s.BestPath)
 	s.BestPath = FindAnotherIntersect(s.BestPath)
 

@@ -30,26 +30,20 @@ type Path struct {
 	totalLen  int     // the total length of the path.
 }
 
-// EndRoomUsed represents whether the end room of a path has already been used.
-type EndRoomUsed struct {
-	whichPath []*room // the end room of the path.
-	used      bool    // whether the end room has been used.
-}
-
 type room struct {
-	parent   [](*room)
 	name     string
-	children [](*room)
+	parent   []*room
+	children []*room
 	occupied bool
 	queue    int
 }
 
 type solution struct {
-	childrenOfFirstRoom int
-	countloop           int
-	appendWays          []*room
-	CombinatedRooms     [][]*room
-	BestCombinations    [][]Path
-	BestPath            [][]*room
-	counter             int
+	startRoomChildren int
+	countloop         int
+	appendWays        []*room
+	CombinatedRooms   [][]*room
+	BestCombinations  [][]Path
+	BestPath          [][]*room
+	counter           int
 }
