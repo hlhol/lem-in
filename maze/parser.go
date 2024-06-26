@@ -1,9 +1,11 @@
 package maze
 
 import (
+	"fmt"
 	"io/ioutil"
 	"lem/utils"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -88,6 +90,32 @@ func ReadFile(textfile string) *Maze {
 		utils.Fatal("Empty input file")
 	}
 
+	startFlag := false
+	for _, l := range lines {
+		if l == "##start" {
+			startFlag = true
+			break
+		}
+	}
+
+	if startFlag != true {
+		fmt.Println("not found ##start")
+		os.Exit(0)
+	}
+
+	endFlag := false
+	for _, l := range lines {
+		if l == "##end" {
+			endFlag = true
+			break
+		}
+	}
+
+	if endFlag != true {
+		fmt.Println("not found ##end")
+		os.Exit(0)
+	}
+
 	antCount, _ := strconv.Atoi(lines[0])
 	lines = lines[1:]
 
@@ -97,7 +125,7 @@ func ReadFile(textfile string) *Maze {
 	startLine := -1
 	endLine := -1
 
-	for i, v := range lines {
+	for _, v := range lines {
 		if len(v) == 0 {
 			continue
 		}
@@ -124,7 +152,7 @@ func ReadFile(textfile string) *Maze {
 				continue
 
 			default:
-				utils.Fatal("base line at %d", i+2) // index startName from 0 + first line is skipped
+				// utils.Fatal("base line at %d", i+2) // index startName from 0 + first line is skipped
 			}
 		}
 

@@ -8,51 +8,67 @@ import (
 
 // Load rooms form maze lines
 func (maze *Maze) Load() {
-
 	var roomNames []string
-
 	var sourceRoomConnection []string
 	var destRoomConnection []string
 
-	// go through maze lines, and the rooms name and connections
+	// Go through maze lines to get the rooms names and connections
 	for _, line := range maze.lines {
 		for _, char := range line {
-
 			if char == ' ' {
 				roomName := strings.Split(line, " ")[0]
 				roomNames = append(roomNames, roomName)
-
 				break
-
 			} else if char == '-' {
-
 				beginDestSlice := strings.Split(line, "-")
+				var sourceRoom, destRoom string
 
 				if beginDestSlice[0] == maze.endName {
-					sourceRoomConnection = append(sourceRoomConnection, beginDestSlice[1])
-					destRoomConnection = append(destRoomConnection, beginDestSlice[0])
+					sourceRoom = beginDestSlice[1]
+					destRoom = beginDestSlice[0]
 				} else {
-
-					sourceRoomConnection = append(sourceRoomConnection, beginDestSlice[0])
-					destRoomConnection = append(destRoomConnection, beginDestSlice[1])
+					sourceRoom = beginDestSlice[0]
+					destRoom = beginDestSlice[1]
 				}
 
+				// Check if sourceRoom and destRoom are in roomNames
+				if !contains(roomNames, sourceRoom) {
+					fmt.Printf("ERROR\nRoom not found: %s\n", sourceRoom)
+					os.Exit(0)
+				}
+				if !contains(roomNames, destRoom) {
+					fmt.Printf("ERROR\nRoom not found: %s\n", destRoom)
+					os.Exit(0)
+				}
+
+				sourceRoomConnection = append(sourceRoomConnection, sourceRoom)
+				destRoomConnection = append(destRoomConnection, destRoom)
 				break
 			}
 		}
 	}
 
-	// check if any room link to itself
+	// Check if any room links to itself
 	for i, roomName := range sourceRoomConnection {
 		if roomName == destRoomConnection[i] {
 			fmt.Println("ERROR\nSome Rooms Linked to Themselves")
 			os.Exit(0)
-
 		}
 	}
 
 	maze.addRoom(nil, maze.startName, sourceRoomConnection, destRoomConnection)
 }
+
+// Helper function to check if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
+}
+
 
 func (maze *Maze) addRoom(root *room, roomName string, sourceConnections, destinationConnections []string) *room {
 	var newRoom *room
